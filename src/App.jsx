@@ -15,6 +15,7 @@ import PaycheckPage from './pages/dashboard/PaycheckPage';
 import GoalsPage from './pages/dashboard/GoalsPage';
 import RiskQuizPage from './pages/dashboard/RiskQuizPage';
 import PreviewPage from './pages/dashboard/PreviewPage';
+import DepositPage from './pages/dashboard/DepositPage';
 import ForecastPage from './pages/dashboard/ForecastPage';
 import ESGPage from './pages/dashboard/ESGPage';
 import NewsPage from './pages/dashboard/NewsPage';
@@ -47,6 +48,7 @@ export default function App() {
             <Route path="/goals" element={<GoalsPage />} />
             <Route path="/risk-quiz" element={<RiskQuizPage />} />
             <Route path="/preview" element={<PreviewPage />} />
+            <Route path="/deposit" element={<DepositPage />} />
             <Route path="/forecast" element={<ForecastPage />} />
             <Route path="/esg" element={<ESGPage />} />
             <Route path="/news" element={<NewsPage />} />
