@@ -42,12 +42,12 @@ export default function DashboardPage() {
     setSplits(newSplits);
   };
 
-  const splitColors = { needs: '#3b82f6', wants: '#8b5cf6', savings: '#22c55e', investments: '#f59e0b' };
+  const splitColors = { needs: '#4A90E2', wants: '#9B59B6', savings: '#00C853', investments: '#FFB347' };
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null;
     return (
-      <div className="bg-white dark:bg-surface-800 p-3 rounded-xl shadow-xl border border-surface-200 dark:border-surface-700 text-sm">
+      <div className="bg-white dark:bg-[#0B3B2D] p-3 rounded-xl shadow-xl border border-surface-200 dark:border-[#00C853]/20 text-sm">
         <p className="font-semibold text-surface-900 dark:text-white mb-1">{label}</p>
         {payload.map((entry, i) => (
           <p key={i} style={{ color: entry.color }} className="text-xs">
@@ -295,8 +295,8 @@ export default function DashboardPage() {
             <AreaChart data={backtestData}>
               <defs>
                 <linearGradient id="aiGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.3} />
-                  <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+                  <stop offset="0%" stopColor="#00C853" stopOpacity={0.35} />
+                  <stop offset="100%" stopColor="#00C853" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="benchGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#94a3b8" stopOpacity={0.2} />
@@ -308,7 +308,7 @@ export default function DashboardPage() {
               <YAxis tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`} tick={{ fontSize: 11, fill: '#94a3b8' }} />
               <Tooltip content={<CustomTooltip />} />
               <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Area type="monotone" dataKey="ai" name="AI Portfolio" stroke="#3b82f6" fill="url(#aiGrad)" strokeWidth={2.5} />
+              <Area type="monotone" dataKey="ai" name="AI Portfolio" stroke="#00C853" fill="url(#aiGrad)" strokeWidth={2.5} />
               <Area type="monotone" dataKey="benchmark" name="Benchmark" stroke="#94a3b8" fill="url(#benchGrad)" strokeWidth={2} strokeDasharray="5 5" />
             </AreaChart>
           </ResponsiveContainer>
@@ -328,10 +328,10 @@ export default function DashboardPage() {
                 <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar dataKey="ai" name="AI Portfolio" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="sp500" name="S&P 500" fill="#22c55e" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="kse100" name="KSE-100" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="equalWeight" name="Equal Weight" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="ai" name="AI Portfolio" fill="#00C853" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="sp500" name="S&P 500" fill="#FFB347" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="kse100" name="KSE-100" fill="#9B59B6" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="equalWeight" name="Equal Weight" fill="#4A90E2" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -348,10 +348,10 @@ export default function DashboardPage() {
                 <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Line type="monotone" dataKey="ai" name="AI Portfolio" stroke="#3b82f6" strokeWidth={2.5} dot={false} />
-                <Line type="monotone" dataKey="sp500" name="S&P 500" stroke="#22c55e" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="kse100" name="KSE-100" stroke="#f59e0b" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="equalWeight" name="Equal Weight" stroke="#8b5cf6" strokeWidth={2} dot={false} strokeDasharray="5 5" />
+                <Line type="monotone" dataKey="ai" name="AI Portfolio" stroke="#00C853" strokeWidth={2.5} dot={false} />
+                <Line type="monotone" dataKey="sp500" name="S&P 500" stroke="#FFB347" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="kse100" name="KSE-100" stroke="#9B59B6" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="equalWeight" name="Equal Weight" stroke="#4A90E2" strokeWidth={2} dot={false} strokeDasharray="5 5" />
               </LineChart>
             </ResponsiveContainer>
           </div>
