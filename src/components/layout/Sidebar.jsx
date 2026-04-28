@@ -46,16 +46,16 @@ export default function Sidebar() {
   };
 
   const sidebarContent = (
-    <div className={`flex flex-col h-full bg-[#0B3B2D] dark:bg-[#061D16] border-r border-[#00C853]/15 transition-all duration-300 ${collapsed ? 'w-[72px]' : 'w-[260px]'}`}>
+    <div className={`flex flex-col h-full bg-white dark:bg-surface-900 border-r border-surface-200 dark:border-surface-700/50 transition-all duration-300 ${collapsed ? 'w-[72px]' : 'w-[260px]'}`}>
       {/* Logo */}
-      <div className="flex items-center gap-3 px-4 h-16 border-b border-[#00C853]/15">
+      <div className="flex items-center gap-3 px-4 h-16 border-b border-surface-200 dark:border-surface-700/50">
         <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center flex-shrink-0">
           <Bot className="w-5 h-5 text-white" />
         </div>
         {!collapsed && (
           <div className="overflow-hidden">
-            <h1 className="text-lg font-bold text-white whitespace-nowrap">FinAI Nexus</h1>
-            {isAdminRoute && <p className="text-[10px] text-[#00C853] font-semibold tracking-wider uppercase -mt-1">ADMIN PANEL</p>}
+            <h1 className="text-lg font-bold text-surface-900 dark:text-white whitespace-nowrap">FinAI Nexus</h1>
+            {isAdminRoute && <p className="text-[10px] text-primary-400 font-semibold tracking-wider uppercase -mt-1">ADMIN PANEL</p>}
           </div>
         )}
       </div>
@@ -65,7 +65,7 @@ export default function Sidebar() {
         {isAdmin && !isAdminRoute && (
           <Link
             to="/admin"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium mb-2 bg-[#00C853]/15 text-[#00C853] hover:bg-[#00C853]/25 transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium mb-2 bg-primary-50 dark:bg-primary-500/10 text-primary-600 dark:text-primary-400 hover:bg-primary-100 dark:hover:bg-primary-500/20 transition-colors"
           >
             <Shield className="w-[18px] h-[18px] flex-shrink-0" />
             {!collapsed && <span>Admin Panel</span>}
@@ -74,7 +74,7 @@ export default function Sidebar() {
         {isAdminRoute && (
           <Link
             to="/dashboard"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium mb-2 bg-white/10 text-white/80 hover:bg-white/15 hover:text-white transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium mb-2 bg-accent-50 dark:bg-accent-500/10 text-accent-600 dark:text-accent-400 hover:bg-accent-100 dark:hover:bg-accent-500/20 transition-colors"
           >
             <LayoutDashboard className="w-[18px] h-[18px] flex-shrink-0" />
             {!collapsed && <span>Back to App</span>}
@@ -89,12 +89,12 @@ export default function Sidebar() {
               onClick={() => setMobileOpen(false)}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
                 ${isActive
-                  ? 'bg-[#00C853]/15 text-[#00C853] shadow-sm'
-                  : 'text-white/65 hover:bg-white/10 hover:text-white'
+                  ? 'bg-primary-500/10 text-primary-600 dark:text-primary-400 shadow-sm'
+                  : 'text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 hover:text-surface-900 dark:hover:text-white'
                 }`}
               title={collapsed ? label : undefined}
             >
-              <Icon className={`w-[18px] h-[18px] flex-shrink-0 ${isActive ? 'text-[#00C853]' : ''}`} />
+              <Icon className={`w-[18px] h-[18px] flex-shrink-0 ${isActive ? 'text-primary-500' : ''}`} />
               {!collapsed && <span>{label}</span>}
             </Link>
           );
@@ -102,10 +102,10 @@ export default function Sidebar() {
       </nav>
 
       {/* Bottom actions */}
-      <div className="border-t border-[#00C853]/15 p-2 space-y-1">
+      <div className="border-t border-surface-200 dark:border-surface-700/50 p-2 space-y-1">
         <button
           onClick={() => setDarkMode(!darkMode)}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full text-white/65 hover:bg-white/10 hover:text-white transition-colors"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
         >
           {darkMode ? <Sun className="w-[18px] h-[18px] flex-shrink-0" /> : <Moon className="w-[18px] h-[18px] flex-shrink-0" />}
           {!collapsed && <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>}
@@ -113,28 +113,28 @@ export default function Sidebar() {
 
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="hidden lg:flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full text-white/65 hover:bg-white/10 hover:text-white transition-colors"
+          className="hidden lg:flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
         >
           {collapsed ? <ChevronRight className="w-[18px] h-[18px]" /> : <ChevronLeft className="w-[18px] h-[18px]" />}
           {!collapsed && <span>Collapse</span>}
         </button>
 
         {/* User info */}
-        <div className={`flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/10 ${collapsed ? 'justify-center' : ''}`}>
+        <div className={`flex items-center gap-3 px-3 py-2.5 rounded-xl bg-surface-50 dark:bg-surface-800/50 ${collapsed ? 'justify-center' : ''}`}>
           <div className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center flex-shrink-0 text-white text-sm font-bold">
             {user?.name?.charAt(0) || 'U'}
           </div>
           {!collapsed && (
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">{user?.name}</p>
-              <p className="text-xs text-white/60 truncate">{user?.email}</p>
+              <p className="text-sm font-medium text-surface-900 dark:text-white truncate">{user?.name}</p>
+              <p className="text-xs text-surface-500 truncate">{user?.email}</p>
             </div>
           )}
         </div>
 
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full text-red-400 hover:bg-red-500/20 transition-colors"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
         >
           <LogOut className="w-[18px] h-[18px] flex-shrink-0" />
           {!collapsed && <span>Logout</span>}
@@ -148,9 +148,9 @@ export default function Sidebar() {
       {/* Mobile menu button */}
       <button
         onClick={() => setMobileOpen(!mobileOpen)}
-        className="lg:hidden fixed top-3 left-3 z-50 p-2 rounded-xl bg-[#0B3B2D] shadow-lg border border-[#00C853]/20"
+        className="lg:hidden fixed top-3 left-3 z-50 p-2 rounded-xl bg-white dark:bg-surface-800 shadow-lg border border-surface-200 dark:border-surface-700"
       >
-        {mobileOpen ? <X className="w-5 h-5 text-white" /> : <Menu className="w-5 h-5 text-white" />}
+        {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
       </button>
 
       {/* Mobile overlay */}
