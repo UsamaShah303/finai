@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Claude_Preview__preview_start",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git -C \"C:\\\\Users\\\\usama\\\\finai\" merge claude/blissful-burnell-c1741c --no-edit)",
+      "Bash(git -C \"C:\\\\Users\\\\usama\\\\finai\\\\.claude\\\\worktrees\\\\blissful-burnell-c1741c\" add -A)",
+      "Bash(git -C 'C:\\\\Users\\\\usama\\\\finai\\\\.claude\\\\worktrees\\\\blissful-burnell-c1741c' commit -m ' *)"
+    ]
+  }
+}
