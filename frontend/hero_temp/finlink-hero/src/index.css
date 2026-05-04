@@ -1,0 +1,147 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500&family=Inter:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Finlink design system — warm off-white, soft sky, editorial serif display */
+
+@layer base {
+  :root {
+    /* Soft sky canvas */
+    --background: 200 60% 97%;
+    --foreground: 222 35% 12%;
+
+    --card: 200 60% 97%;
+    --card-foreground: 222 35% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 35% 12%;
+
+    /* Deep ink navy */
+    --primary: 222 40% 11%;
+    --primary-foreground: 200 60% 97%;
+
+    --secondary: 200 50% 94%;
+    --secondary-foreground: 222 40% 11%;
+
+    --muted: 205 40% 92%;
+    --muted-foreground: 215 18% 40%;
+
+    --accent: 145 55% 45%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 200 60% 97%;
+
+    --border: 205 30% 86%;
+    --input: 205 30% 86%;
+    --ring: 145 55% 45%;
+
+    --radius: 1rem;
+
+    /* Hero scene tokens */
+    --sky-top: 200 80% 96%;
+    --sky-mid: 205 70% 90%;
+    --sky-bottom: 195 60% 84%;
+    --eyebrow: 215 18% 40%;
+    --underline: 145 55% 45%;
+    --guide: 205 30% 78%;
+
+    /* Brand greens */
+    --brand-green: 145 55% 45%;
+    --brand-green-soft: 145 50% 92%;
+    --brand-green-deep: 155 60% 28%;
+
+    --gradient-sky: linear-gradient(180deg, hsl(var(--sky-top)) 0%, hsl(var(--sky-mid)) 50%, hsl(var(--sky-bottom)) 100%);
+    --shadow-phone: 0 40px 80px -20px hsl(222 40% 11% / 0.18), 0 20px 40px -15px hsl(195 60% 40% / 0.18);
+    --shadow-soft: 0 1px 2px hsl(222 40% 11% / 0.06);
+    --shadow-green-glow: 0 20px 60px -20px hsl(var(--brand-green) / 0.35);
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 222 40% 6%;
+    --foreground: 42 38% 98%;
+    --card: 222 40% 6%;
+    --card-foreground: 42 38% 98%;
+    --popover: 222 40% 6%;
+    --popover-foreground: 42 38% 98%;
+    --primary: 42 38% 98%;
+    --primary-foreground: 222 40% 11%;
+    --secondary: 222 25% 14%;
+    --secondary-foreground: 42 38% 98%;
+    --muted: 222 25% 14%;
+    --muted-foreground: 215 15% 65%;
+    --accent: 222 25% 14%;
+    --accent-foreground: 42 38% 98%;
+    --destructive: 0 60% 40%;
+    --destructive-foreground: 42 38% 98%;
+    --border: 222 25% 18%;
+    --input: 222 25% 18%;
+    --ring: 42 38% 98%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: 'ss01', 'cv11';
+  }
+
+  .font-display {
+    font-family: 'Fraunces', Georgia, serif;
+    font-optical-sizing: auto;
+    font-variation-settings: 'opsz' 144;
+    letter-spacing: -0.025em;
+  }
+}
+
+@layer utilities {
+  .bg-sky-gradient {
+    background: var(--gradient-sky);
+  }
+  .shadow-phone {
+    box-shadow: var(--shadow-phone);
+  }
+  .dashed-guide {
+    background-image: linear-gradient(to bottom, hsl(var(--guide)) 50%, transparent 50%);
+    background-size: 1px 8px;
+    background-repeat: repeat-y;
+  }
+}
+
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+@keyframes drift {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(10px); }
+}
+@keyframes drift-slow {
+  0%, 100% { transform: translateX(-2%); }
+  50% { transform: translateX(3%); }
+}
+@keyframes drift-reverse {
+  0%, 100% { transform: translateX(2%); }
+  50% { transform: translateX(-4%); }
+}
+.animate-float { animation: float-slow 8s ease-in-out infinite; }
+.animate-drift { animation: drift 14s ease-in-out infinite; }
+.animate-drift-slow { animation: drift-slow 28s ease-in-out infinite; }
+.animate-drift-reverse { animation: drift-reverse 22s ease-in-out infinite; }
