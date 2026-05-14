@@ -29,15 +29,20 @@ export default function CalipsoAuthForm({ mode }) {
     setLoading(true);
     await new Promise((resolve) => setTimeout(resolve, 550));
 
+    let nextPath = '/dashboard';
+
     if (isRegister) {
       const registeredUser = register(formData.name, formData.email, formData.password);
       updateUser({ ...registeredUser, country: formData.country, onboardingComplete: true });
     } else {
-      login(formData.email, formData.password);
+      const loggedInUser = login(formData.email, formData.password);
+      if (loggedInUser?.role === 'admin') {
+        nextPath = '/admin';
+      }
     }
 
     setLoading(false);
-    navigate('/dashboard', { replace: true });
+    navigate(nextPath, { replace: true });
   };
 
   return (

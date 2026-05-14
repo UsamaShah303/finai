@@ -15,7 +15,7 @@ export function AdminRoute({ children }) {
 }
 
 export function PublicRoute({ children }) {
-  const { isAuthenticated } = useAuth();
-  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
+  const { isAuthenticated, isAdmin } = useAuth();
+  if (isAuthenticated) return <Navigate to={isAdmin ? "/admin" : "/dashboard"} replace />;
   return children;
 }
