@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute, AdminRoute, PublicRoute } from './components/layout/RouteGuards';
 import DashboardLayout from './components/layout/DashboardLayout';
@@ -24,13 +24,12 @@ import SHAPExplainerPage from './pages/dashboard/SHAPExplainerPage';
 import TaxLossPage from './pages/dashboard/TaxLossPage';
 
 // Admin pages
-import AdminDashboard from './pages/admin/AdminDashboard';
-import HealthMonitor from './pages/admin/HealthMonitor';
-import ErrorLogs from './pages/admin/ErrorLogs';
-import UsageAnalytics from './pages/admin/UsageAnalytics';
-import AIPerformance from './pages/admin/AIPerformance';
-import AIParameters from './pages/admin/AIParameters';
-import ExternalAPIs from './pages/admin/ExternalAPIs';
+import { AdminPanel } from './pages/admin/AdminPanel';
+
+function AdminPanelWrapper() {
+  const navigate = useNavigate();
+  return <AdminPanel onBack={() => navigate('/dashboard')} />;
+}
 
 export default function App() {
   return (
@@ -60,15 +59,14 @@ export default function App() {
           </Route>
 
           {/* Admin routes */}
-          <Route element={<AdminRoute><DashboardLayout /></AdminRoute>}>
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/admin/health" element={<HealthMonitor />} />
-            <Route path="/admin/errors" element={<ErrorLogs />} />
-            <Route path="/admin/analytics" element={<UsageAnalytics />} />
-            <Route path="/admin/ai-performance" element={<AIPerformance />} />
-            <Route path="/admin/ai-parameters" element={<AIParameters />} />
-            <Route path="/admin/apis" element={<ExternalAPIs />} />
-          </Route>
+          <Route 
+            path="/admin/*" 
+            element={
+              <AdminRoute>
+                <AdminPanelWrapper />
+              </AdminRoute>
+            } 
+          />
 
           {/* Catch all */}
           <Route path="*" element={<Navigate to="/" replace />} />
