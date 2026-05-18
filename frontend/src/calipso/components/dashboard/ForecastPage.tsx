@@ -76,9 +76,9 @@ export const ForecastPage = () => {
           <p className="text-gray-500 font-medium text-lg">Monte Carlo Intelligence • 100+ Simulated Realities</p>
         </div>
         <div className="flex items-center gap-3 bg-white/60 p-2 rounded-2xl border border-white/40">
-           <div className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm flex items-center gap-2">
-             <RefreshCw className="w-4 h-4" />
-             Live Simulation
+           <div className="px-4 py-2 bg-indigo-600/10 text-indigo-600 rounded-xl font-bold text-sm flex items-center gap-2">
+             <div className="w-2 h-2 bg-indigo-600 rounded-full animate-pulse" />
+             Simulation Active
            </div>
         </div>
       </div>

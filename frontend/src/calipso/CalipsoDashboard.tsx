@@ -473,7 +473,10 @@ const GoalsPage = () => {
           <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-2 font-display tracking-tight text-balance">Financial Goals</h1>
           <p className="text-gray-500 font-medium text-lg">Track and manage your long-term savings objectives</p>
         </div>
-        <button className="flex items-center gap-3 bg-primary text-white px-8 py-4 rounded-[24px] font-bold shadow-xl shadow-primary/20 active:scale-95 transition-all">
+        <button 
+          onClick={() => alert("Goal creation wizard coming soon.")}
+          className="flex items-center gap-3 bg-primary text-white px-8 py-4 rounded-[24px] font-bold shadow-xl shadow-primary/20 active:scale-95 transition-all"
+        >
           <Plus className="w-5 h-5 text-white" />
           Create New Goal
         </button>
@@ -534,7 +537,10 @@ const GoalsPage = () => {
                        <span className="text-sm font-black text-gray-900 w-10 text-right">{goal.progress}%</span>
                     </div>
                   </div>
-                  <button className="w-10 h-10 rounded-full bg-gray-50 text-gray-500 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
+                  <button 
+                    onClick={() => alert(`Opening details for ${goal.label} goal...`)}
+                    className="w-10 h-10 rounded-full bg-gray-50 text-gray-500 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all"
+                  >
                      <ArrowUpRight className="w-5 h-5" />
                   </button>
                 </motion.div>
@@ -554,8 +560,8 @@ const GoalsPage = () => {
                 <h3 className="text-2xl font-bold mb-4 leading-tight">You're on track to complete "Vacation" in 14 days!</h3>
                 <p className="text-white/60 font-medium text-lg mb-8">Increase your monthly contribution by $50 to reach your car goal earlier.</p>
                 <div className="flex gap-4">
-                   <button className="bg-lime-400 text-gray-900 px-6 py-3 rounded-2xl font-bold transition-transform hover:scale-105">Adjust Savings</button>
-                   <button className="bg-white/10 text-white px-6 py-3 rounded-2xl font-bold transition-transform hover:scale-105">View Timeline</button>
+                   <button onClick={() => alert("Savings adjustment panel coming soon.")} className="bg-lime-400 text-gray-900 px-6 py-3 rounded-2xl font-bold transition-transform hover:scale-105">Adjust Savings</button>
+                   <button onClick={() => alert("Timeline view coming soon.")} className="bg-white/10 text-white px-6 py-3 rounded-2xl font-bold transition-transform hover:scale-105">View Timeline</button>
                 </div>
               </div>
               <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-primary/20 rounded-full blur-[100px] pointer-events-none" />
@@ -1014,7 +1020,10 @@ const NewsSentimentPage = () => {
                 <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Last Analyzed</span>
                 <span className="text-sm font-bold text-gray-900">May 02, 2026 • 15:45 PM</span>
               </div>
-              <button className="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-2xl font-bold hover:scale-105 active:scale-95 transition-all shadow-lg shadow-primary/20">
+              <button 
+                onClick={() => alert("Refreshed latest market news and AI sentiment analysis.")}
+                className="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-2xl font-bold hover:scale-105 active:scale-95 transition-all shadow-lg shadow-primary/20"
+              >
                 <CloudLightning className="w-4 h-4" />
                 Refresh
               </button>

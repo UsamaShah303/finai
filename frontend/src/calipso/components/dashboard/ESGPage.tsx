@@ -178,7 +178,10 @@ export const ESGPage = () => {
                     </div>
                  </div>
                  
-                 <button className="mt-12 w-full py-5 bg-white text-gray-900 rounded-[28px] font-black uppercase tracking-widest text-xs hover:scale-105 active:scale-95 transition-all">
+                 <button 
+                   onClick={() => alert("Generating full 30-page PDF ethical report... (Demo)")}
+                   className="mt-12 w-full py-5 bg-white text-gray-900 rounded-[28px] font-black uppercase tracking-widest text-xs hover:scale-105 active:scale-95 transition-all"
+                 >
                     Full Ethical Report
                  </button>
               </div>
