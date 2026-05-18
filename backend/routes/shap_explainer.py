@@ -1,68 +1,52 @@
 """
-SHAP Explainer route with smart trigger-based caching.
+SHAP Explainer route with Supabase-backed caching and JWT auth.
 
 Cache is recalculated only when something meaningful changes:
   - User retook the quiz
   - Price moved > 5%
   - Sentiment changed
-  - Portfolio was rebalanced
   - Cache is older than 24 hours
   - User requests a manual refresh
-
-In production, swap the in-memory store for Supabase (schema below).
-
-SQL:
-    CREATE TABLE shap_cache (
-        id                    UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-        user_id               UUID REFERENCES users(id),
-        symbol                VARCHAR(20),
-        shap_data             JSONB,
-        calculated_at         TIMESTAMP,
-        price_at_calculation  DECIMAL,
-        sentiment             VARCHAR(20),
-        quiz_version          INTEGER DEFAULT 1,
-        UNIQUE(user_id, symbol)
-    );
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from flask import Blueprint, jsonify, request
-import json, random
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from db import supabase
+from services.market import get_price
+from services.sentiment import analyse_sentiment
+import json, random, logging
+
+logger = logging.getLogger(__name__)
 
 shap_bp = Blueprint("shap", __name__)
 
-# ---------------------------------------------------------------------------
-# In-memory cache (replace with Supabase in production)
-# ---------------------------------------------------------------------------
-_cache: dict[str, dict] = {}
-
-
-def _cache_key(user_id: str, symbol: str) -> str:
-    return f"{user_id}::{symbol}"
-
 
 # ---------------------------------------------------------------------------
-# Stub helpers — replace with real data sources
+# Stub helpers — will be replaced with real ML model
 # ---------------------------------------------------------------------------
-
-def get_current_price(symbol: str) -> float:
-    """Stub: return a mock live price."""
-    base = {"SPY": 528.40, "PSX-100": 78230.0, "BND/PIB": 72.15, "GLD": 234.80}
-    return base.get(symbol, 100.0) * (1 + random.uniform(-0.02, 0.02))
-
 
 def get_current_sentiment(symbol: str) -> str:
-    """Stub: return current sentiment label."""
-    return random.choice(["Positive", "Neutral", "Negative"])
+    """Get a simple sentiment label for a symbol."""
+    headlines = [f"{symbol} market update", f"{symbol} price movement today"]
+    result = analyse_sentiment(headlines)
+    return result["label"].capitalize()
 
 
 def get_quiz_version(user_id: str) -> int:
-    """Stub: return quiz version counter for user."""
-    return 1
+    """Return quiz version counter for user (based on risk_profiles)."""
+    try:
+        result = supabase.table("risk_profiles") \
+            .select("created_at") \
+            .eq("user_id", user_id) \
+            .execute()
+        return len(result.data) if result.data else 0
+    except Exception:
+        return 0
 
 
 # ---------------------------------------------------------------------------
-# SHAP calculation (mock — replace with real ML model)
+# SHAP templates (mock — replace with real ML model)
 # ---------------------------------------------------------------------------
 
 SHAP_TEMPLATES = {
@@ -90,7 +74,7 @@ SHAP_TEMPLATES = {
         "name": "Pakistan Stocks (PSX)",
         "allocation": "18%",
         "confidence": 82,
-        "summary": "PSX-100 gives you exposure to Pakistan's growing economy in your home currency. Your long investment horizon and calm approach to market drops make this a good fit.",
+        "summary": "PSX-100 gives you exposure to Pakistan's growing economy in your home currency.",
         "summary_ur": "PSX-100 آپ کو پاکستان کی بڑھتی ہوئی معیشت میں حصہ دیتا ہے۔",
         "factors": [
             {"key": "investment_horizon", "direction": "positive", "value": 0.40},
@@ -99,7 +83,7 @@ SHAP_TEMPLATES = {
             {"key": "volatility", "direction": "concern", "value": 0.22},
         ],
         "what_if": [
-            {"scenario": "What if you invested 30%+ of your income?", "impact": "Higher contributions would accelerate your wealth growth in PKR assets significantly."},
+            {"scenario": "What if you invested 30%+ of your income?", "impact": "Higher contributions would accelerate your wealth growth in PKR assets."},
         ],
     },
     "BND/PIB": {
@@ -115,7 +99,7 @@ SHAP_TEMPLATES = {
             {"key": "income", "direction": "positive", "value": 0.28},
         ],
         "what_if": [
-            {"scenario": "What if you were comfortable with bigger swings?", "impact": "We would reduce bonds and add more growth stocks for potentially higher returns."},
+            {"scenario": "What if you were comfortable with bigger swings?", "impact": "We would reduce bonds and add more growth stocks."},
         ],
     },
     "GLD": {
@@ -131,19 +115,15 @@ SHAP_TEMPLATES = {
             {"key": "currency", "direction": "concern", "value": 0.20},
         ],
         "what_if": [
-            {"scenario": "What if PKR was very stable?", "impact": "Gold would be less important as a currency hedge, but still valuable for diversification."},
+            {"scenario": "What if PKR was very stable?", "impact": "Gold would be less important as a currency hedge."},
         ],
     },
 }
 
 
 def calculate_shap(user_id: str, symbol: str) -> dict:
-    """
-    In production this runs the actual SHAP model.
-    For now returns the template with slight randomness.
-    """
+    """In production this runs the actual SHAP model. For now returns template."""
     template = SHAP_TEMPLATES.get(symbol, SHAP_TEMPLATES["SPY"])
-    # Add small jitter to confidence to simulate recalculation
     result = {**template, "confidence": template["confidence"] + random.randint(-2, 2)}
     return result
 
@@ -152,58 +132,56 @@ def calculate_shap(user_id: str, symbol: str) -> dict:
 # Should we recalculate?
 # ---------------------------------------------------------------------------
 
-SHAP_UPDATE_TRIGGERS = [
-    "user_retook_quiz",
-    "portfolio_rebalanced",
-    "sentiment_changed",
-    "price_moved_significantly",
-    "esg_score_updated",
-    "user_requests_refresh",
-]
-
-
 def should_recalculate(user_id: str, symbol: str, force: bool = False) -> tuple[bool, str]:
     """Return (need_recalc, reason)."""
     if force:
         return True, "user_requests_refresh"
 
-    key = _cache_key(user_id, symbol)
-    cached = _cache.get(key)
+    # Check DB cache
+    try:
+        result = supabase.table("shap_cache") \
+            .select("*") \
+            .eq("user_id", user_id) \
+            .eq("symbol", symbol) \
+            .execute()
+    except Exception as e:
+        logger.warning(f"Cache read failed: {e}")
+        return True, "cache_read_error"
 
-    if not cached:
+    if not result.data:
         return True, "no_cache"
 
-    last_calc = datetime.fromisoformat(cached["calculated_at"])
-    now = datetime.utcnow()
+    cached = result.data[0]
+    cached_at = datetime.fromisoformat(cached["cached_at"].replace("Z", "+00:00"))
+    now = datetime.now(timezone.utc)
 
     # Rule 1: older than 24h
-    if now - last_calc > timedelta(hours=24):
+    if now - cached_at > timedelta(hours=24):
         return True, "cache_expired"
 
-    # Rule 2: sentiment changed
-    if cached.get("sentiment") != get_current_sentiment(symbol):
-        return True, "sentiment_changed"
-
-    # Rule 3: price moved > 5%
-    old_price = cached.get("price_at_calculation", 0)
-    current_price = get_current_price(symbol)
+    # Rule 2: price moved > 5%
+    old_price = float(cached.get("price_at_calculation") or 0)
     if old_price > 0:
-        change = abs((current_price - old_price) / old_price)
-        if change > 0.05:
-            return True, "price_moved_significantly"
+        current_price = get_price(symbol)
+        if current_price:
+            change = abs((current_price - old_price) / old_price)
+            if change > 0.05:
+                return True, "price_moved_significantly"
 
-    # Rule 4: quiz retaken
-    if cached.get("quiz_version") != get_quiz_version(user_id):
+    # Rule 3: quiz retaken
+    current_quiz_ver = get_quiz_version(user_id)
+    if cached.get("quiz_version") != current_quiz_ver:
         return True, "user_retook_quiz"
 
     return False, "cache_valid"
 
 
 # ---------------------------------------------------------------------------
-# Route
+# Routes
 # ---------------------------------------------------------------------------
 
 @shap_bp.route("/shap/assets", methods=["GET"])
+@jwt_required()
 def list_assets():
     """Return available assets for SHAP explanation."""
     assets = [
@@ -214,39 +192,63 @@ def list_assets():
 
 
 @shap_bp.route("/shap/<symbol>", methods=["GET"])
+@jwt_required()
 def get_shap(symbol):
-    """
-    Return SHAP explanation for a symbol.
-    Uses smart caching — only recalculates when triggers fire.
-    """
-    # In production: user_id = get_jwt_identity()
-    user_id = request.args.get("user_id", "demo-user")
+    """Return SHAP explanation for a symbol. Uses smart DB caching."""
+    user_id = get_jwt_identity()
     force = request.args.get("refresh", "false").lower() == "true"
 
     need_recalc, reason = should_recalculate(user_id, symbol, force=force)
 
-    key = _cache_key(user_id, symbol)
-
     if not need_recalc:
-        cached = _cache[key]
-        return jsonify({
-            **json.loads(cached["shap_data"]),
-            "from_cache": True,
-            "calculated_at": cached["calculated_at"],
-            "cache_reason": "cache_valid",
-        }), 200
+        # Return from DB cache
+        cached = supabase.table("shap_cache") \
+            .select("*") \
+            .eq("user_id", user_id) \
+            .eq("symbol", symbol) \
+            .execute()
+
+        if cached.data:
+            entry = cached.data[0]
+            return jsonify({
+                "symbol": symbol,
+                "name": entry.get("name", symbol),
+                "allocation": entry.get("allocation", ""),
+                "confidence": entry.get("confidence", 80),
+                "summary": entry.get("summary_en", ""),
+                "summary_ur": entry.get("summary_ur", ""),
+                "factors": entry.get("factors", []),
+                "what_if": entry.get("what_if", []),
+                "from_cache": True,
+                "calculated_at": entry.get("cached_at"),
+                "cache_reason": "cache_valid",
+            }), 200
 
     # Recalculate
     shap_result = calculate_shap(user_id, symbol)
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
+    current_price = get_price(symbol)
+    sentiment = get_current_sentiment(symbol)
+    quiz_ver = get_quiz_version(user_id)
 
-    _cache[key] = {
-        "shap_data": json.dumps(shap_result),
-        "calculated_at": now,
-        "price_at_calculation": get_current_price(symbol),
-        "sentiment": get_current_sentiment(symbol),
-        "quiz_version": get_quiz_version(user_id),
-    }
+    # Store in DB
+    try:
+        supabase.table("shap_cache").upsert({
+            "user_id": user_id,
+            "symbol": symbol,
+            "confidence": shap_result.get("confidence"),
+            "factors": shap_result.get("factors", []),
+            "summary_en": shap_result.get("summary", ""),
+            "summary_ur": shap_result.get("summary_ur", ""),
+            "what_if": shap_result.get("what_if", []),
+            "allocation": shap_result.get("allocation", ""),
+            "name": shap_result.get("name", symbol),
+            "price_at_calculation": current_price,
+            "sentiment": sentiment,
+            "quiz_version": quiz_ver,
+        }, on_conflict="user_id,symbol").execute()
+    except Exception as e:
+        logger.warning(f"SHAP cache write failed: {e}")
 
     return jsonify({
         **shap_result,

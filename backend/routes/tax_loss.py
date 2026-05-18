@@ -1,41 +1,18 @@
 """
-Tax Loss Harvesting simulation route.
+Tax Loss Harvesting route with Supabase-backed holdings and JWT auth.
 
 Scans virtual holdings for unrealised losses > 5%, suggests replacement
-assets (wash-sale compliant), and simulates the harvest — selling the
-losing position, buying the replacement, and logging the simulated tax
-saving.
-
-Supabase schema (for production):
-
-    CREATE TABLE virtual_holdings (
-        id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-        user_id         UUID REFERENCES users(id),
-        symbol          VARCHAR(20),
-        shares          DECIMAL,
-        avg_buy_price   DECIMAL,
-        current_price   DECIMAL,
-        invested_amount DECIMAL,
-        currency        VARCHAR(5),
-        market          VARCHAR(10),
-        UNIQUE(user_id, symbol)
-    );
-
-    CREATE TABLE virtual_transactions (
-        id                   UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-        user_id              UUID REFERENCES users(id),
-        type                 VARCHAR(30),
-        symbol               VARCHAR(20),
-        amount               DECIMAL,
-        notes                TEXT,
-        simulated_tax_saved  DECIMAL,
-        created_at           TIMESTAMP DEFAULT now()
-    );
+assets (wash-sale compliant), and simulates the harvest.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from flask import Blueprint, jsonify, request
-import copy
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from db import supabase
+from services.market import get_price
+import logging
+
+logger = logging.getLogger(__name__)
 
 tax_bp = Blueprint("tax_loss", __name__)
 
@@ -43,17 +20,15 @@ tax_bp = Blueprint("tax_loss", __name__)
 # Replacement asset map (wash-sale compliant pairs)
 # ---------------------------------------------------------------------------
 REPLACEMENTS = {
-    # International ETFs
-    "VTI": "SCHB",    # Both US total market
-    "VOO": "IVV",     # Both S&P 500
-    "SPY": "IVV",     # Both S&P 500
-    "VEA": "IEFA",    # Both intl developed
-    "VXUS": "IXUS",   # Both intl ex-US
-    "BND": "AGG",     # Both US bond index
-    "GLD": "IAU",     # Both gold ETFs
-    "VWO": "IEMG",    # Both emerging markets
-    "VNQ": "SCHH",    # Both REITs
-    # PSX stocks
+    "VTI": "SCHB",
+    "VOO": "IVV",
+    "SPY": "IVV",
+    "VEA": "IEFA",
+    "VXUS": "IXUS",
+    "BND": "AGG",
+    "GLD": "IAU",
+    "VWO": "IEMG",
+    "VNQ": "SCHH",
     "OGDC": "PPL",
     "ENGRO": "FATIMA",
     "LUCK": "DGKC",
@@ -77,21 +52,6 @@ REPLACEMENT_DESCRIPTIONS = {
     "KSE-30": "KSE-30 Index (similar to PSX-100)",
 }
 
-# ---------------------------------------------------------------------------
-# Mock virtual holdings (replace with Supabase in production)
-# ---------------------------------------------------------------------------
-MOCK_HOLDINGS = [
-    {"symbol": "SPY", "shares": 5, "avg_buy_price": 540.00, "current_price": 528.40, "currency": "USD", "market": "US"},
-    {"symbol": "VEA", "shares": 20, "avg_buy_price": 48.50, "current_price": 44.10, "currency": "USD", "market": "INTL"},
-    {"symbol": "BND", "shares": 15, "avg_buy_price": 73.20, "current_price": 72.15, "currency": "USD", "market": "US"},
-    {"symbol": "GLD", "shares": 8, "avg_buy_price": 220.00, "current_price": 234.80, "currency": "USD", "market": "US"},
-    {"symbol": "VWO", "shares": 12, "avg_buy_price": 43.80, "current_price": 40.10, "currency": "USD", "market": "EM"},
-    {"symbol": "PSX-100", "shares": 100, "avg_buy_price": 82500.00, "current_price": 78230.00, "currency": "PKR", "market": "PK"},
-]
-
-# In-memory store for harvested results (per session)
-_harvest_log: list[dict] = []
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -99,10 +59,7 @@ _harvest_log: list[dict] = []
 
 def calculate_tax_saving(loss_amount: float, country: str) -> dict:
     """Simulate how much tax would be saved."""
-    if country == "PK":
-        tax_rate = 0.15  # Pakistan short-term CGT
-    else:
-        tax_rate = 0.15  # US standard rate
+    tax_rate = 0.15  # 15% for both PK and US (simplified)
     return {
         "loss_amount": round(loss_amount, 2),
         "tax_rate_pct": tax_rate * 100,
@@ -114,19 +71,34 @@ def find_opportunities(holdings: list[dict]) -> list[dict]:
     """Scan holdings for unrealised losses greater than 5%."""
     opps = []
     for h in holdings:
-        loss = (h["current_price"] - h["avg_buy_price"]) * h["shares"]
-        loss_pct = ((h["current_price"] - h["avg_buy_price"]) / h["avg_buy_price"]) * 100
+        symbol = h.get("symbol", "")
+        shares = float(h.get("quantity", 0))
+        avg_buy = float(h.get("avg_buy_price", 0))
+        market = h.get("market", "INTL")
+        currency = h.get("currency", "USD")
+
+        if shares <= 0 or avg_buy <= 0:
+            continue
+
+        # Fetch live price
+        current = get_price(symbol, market)
+        if not current:
+            continue
+
+        loss = (current - avg_buy) * shares
+        loss_pct = ((current - avg_buy) / avg_buy) * 100
+
         if loss_pct < -5:
-            replacement = REPLACEMENTS.get(h["symbol"])
-            tax = calculate_tax_saving(abs(loss), "PK" if h.get("currency") == "PKR" else "US")
+            replacement = REPLACEMENTS.get(symbol)
+            tax = calculate_tax_saving(abs(loss), "PK" if currency == "PKR" else "US")
             opps.append({
-                "symbol": h["symbol"],
-                "shares": h["shares"],
-                "avg_buy_price": h["avg_buy_price"],
-                "current_price": h["current_price"],
+                "symbol": symbol,
+                "shares": shares,
+                "avg_buy_price": avg_buy,
+                "current_price": current,
                 "loss_amount": round(abs(loss), 2),
                 "loss_pct": round(abs(loss_pct), 1),
-                "currency": h.get("currency", "USD"),
+                "currency": currency,
                 "replacement": replacement,
                 "replacement_desc": REPLACEMENT_DESCRIPTIONS.get(replacement, ""),
                 **tax,
@@ -139,10 +111,29 @@ def find_opportunities(holdings: list[dict]) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 @tax_bp.route("/tax-loss/opportunities", methods=["GET"])
+@jwt_required()
 def get_opportunities():
-    """Scan all user holdings for tax loss harvesting opportunities (loss > 5%)."""
-    # In production: fetch from Supabase for the authenticated user
-    opps = find_opportunities(MOCK_HOLDINGS)
+    """Scan all user holdings for tax loss harvesting opportunities."""
+    user_id = get_jwt_identity()
+
+    # Fetch holdings from Supabase
+    result = supabase.table("virtual_holdings") \
+        .select("*") \
+        .eq("user_id", user_id) \
+        .execute()
+
+    holdings = result.data or []
+
+    if not holdings:
+        return jsonify({
+            "opportunities": [],
+            "total_harvestable_loss": 0,
+            "total_simulated_tax_saved": 0,
+            "count": 0,
+            "message": "No holdings found. Use /api/invest/auto to create a portfolio first.",
+        }), 200
+
+    opps = find_opportunities(holdings)
     return jsonify({
         "opportunities": opps,
         "total_harvestable_loss": round(sum(o["loss_amount"] for o in opps), 2),
@@ -152,19 +143,37 @@ def get_opportunities():
 
 
 @tax_bp.route("/tax-loss/harvest", methods=["POST"])
+@jwt_required()
 def execute_harvest():
     """Simulate a tax loss harvest: sell losing asset, buy replacement."""
+    user_id = get_jwt_identity()
     data = request.get_json() or {}
     symbol = data.get("symbol")
+
     if not symbol:
         return jsonify({"error": "symbol is required"}), 400
 
-    # Find the holding
-    holding = next((h for h in MOCK_HOLDINGS if h["symbol"] == symbol), None)
-    if not holding:
+    # Find the holding in DB
+    holding_result = supabase.table("virtual_holdings") \
+        .select("*") \
+        .eq("user_id", user_id) \
+        .eq("symbol", symbol) \
+        .execute()
+
+    if not holding_result.data:
         return jsonify({"error": f"No holding found for {symbol}"}), 404
 
-    loss = (holding["current_price"] - holding["avg_buy_price"]) * holding["shares"]
+    holding = holding_result.data[0]
+    shares = float(holding.get("quantity", 0))
+    avg_buy = float(holding.get("avg_buy_price", 0))
+    market = holding.get("market", "INTL")
+    currency = holding.get("currency", "USD")
+
+    current = get_price(symbol, market)
+    if not current:
+        return jsonify({"error": f"Could not fetch live price for {symbol}"}), 500
+
+    loss = (current - avg_buy) * shares
     if loss >= 0:
         return jsonify({"error": f"{symbol} is not at a loss"}), 400
 
@@ -172,8 +181,8 @@ def execute_harvest():
     if not replacement:
         return jsonify({"error": f"No replacement asset configured for {symbol}"}), 400
 
-    tax = calculate_tax_saving(abs(loss), "PK" if holding.get("currency") == "PKR" else "US")
-    invested = holding["avg_buy_price"] * holding["shares"]
+    tax = calculate_tax_saving(abs(loss), "PK" if currency == "PKR" else "US")
+    invested = avg_buy * shares
 
     result = {
         "message": "Tax loss harvest simulated",
@@ -184,15 +193,38 @@ def execute_harvest():
         "tax_saved": tax["simulated_tax_saved"],
         "tax_rate_pct": tax["tax_rate_pct"],
         "invested_amount": round(invested, 2),
-        "currency": holding.get("currency", "USD"),
-        "harvested_at": datetime.utcnow().isoformat(),
+        "currency": currency,
+        "harvested_at": datetime.now(timezone.utc).isoformat(),
     }
 
-    _harvest_log.append(result)
+    # Log the harvest as a transaction
+    try:
+        supabase.table("virtual_transactions").insert({
+            "user_id": user_id,
+            "symbol": symbol,
+            "type": "TAX_HARVEST",
+            "amount_pkr": round(abs(loss), 2),
+            "quantity": shares,
+            "notes": f"Sold {symbol}, bought {replacement}. Tax saved: {tax['simulated_tax_saved']}",
+            "simulated_tax_saved": tax["simulated_tax_saved"],
+        }).execute()
+    except Exception as e:
+        logger.warning(f"Failed to log harvest transaction: {e}")
+
     return jsonify(result), 200
 
 
 @tax_bp.route("/tax-loss/history", methods=["GET"])
+@jwt_required()
 def harvest_history():
-    """Return past harvest simulations."""
-    return jsonify({"harvests": _harvest_log}), 200
+    """Return past harvest simulations from DB."""
+    user_id = get_jwt_identity()
+
+    result = supabase.table("virtual_transactions") \
+        .select("*") \
+        .eq("user_id", user_id) \
+        .eq("type", "TAX_HARVEST") \
+        .order("created_at", desc=True) \
+        .execute()
+
+    return jsonify({"harvests": result.data or []}), 200
