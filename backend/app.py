@@ -46,6 +46,7 @@ from routes.portfolio import portfolio_bp
 from routes.forecast import forecast_bp
 from routes.sentiment import sentiment_bp
 from routes.invest import invest_bp
+from routes.goals import goals_bp
 
 app.register_blueprint(auth_bp, url_prefix="/api/auth")
 app.register_blueprint(shap_bp, url_prefix="/api")
@@ -55,6 +56,7 @@ app.register_blueprint(portfolio_bp, url_prefix="/api")
 app.register_blueprint(forecast_bp, url_prefix="/api")
 app.register_blueprint(sentiment_bp, url_prefix="/api")
 app.register_blueprint(invest_bp, url_prefix="/api")
+app.register_blueprint(goals_bp, url_prefix="/api")
 
 
 # ── Health check (no auth required) ──────────────────────────────────────────
