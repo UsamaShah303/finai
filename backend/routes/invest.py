@@ -130,15 +130,20 @@ def auto_invest():
 
             # Write holding to DB
             try:
+                market = alloc_data.get("market", "INTL")
+                is_psx = market in ("PSX", "PKR_BOND", "MUFAP", "COMMODITY")
+                avg_buy_price = alloc_data.get("current_price_usd") if not is_psx else alloc_data.get("current_price_pkr")
+                
                 supabase.table("virtual_holdings").upsert({
                     "user_id": user_id,
                     "symbol": sym,
                     "quantity": alloc_data.get("quantity", 0),
-                    "avg_buy_price": alloc_data.get("current_price_pkr", 0),
+                    "avg_buy_price": avg_buy_price,
+                    "avg_buy_pkr_rate": portfolio["summary"]["pkr_usd_rate"],
                     "weight": round(weight, 4),
                     "esg_score": None,
-                    "market": alloc_data.get("market", "INTL"),
-                    "currency": "PKR" if alloc_data.get("market") in ("PSX", "PKR_BOND", "MUFAP", "COMMODITY") else "USD",
+                    "market": market,
+                    "currency": "PKR" if is_psx else "USD",
                 }, on_conflict="user_id,symbol").execute()
             except Exception as e:
                 logger.warning(f"Holdings write failed for {sym}: {e}")

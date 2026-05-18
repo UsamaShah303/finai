@@ -386,16 +386,41 @@ def calculate_portfolio_performance(holdings: list) -> dict:
         price_raw = get_price(sym, market=mkt)
         if price_raw is None:
             price_raw = avg_buy
+            
+        buy_pkr_rate = float(h.get("avg_buy_pkr_rate", 278.0))
         is_psx = mkt == "PSX" or sym.endswith(".KA")
-        price_pkr = price_raw if is_psx else price_raw * pkr_rate
-        avg_buy_pkr = avg_buy if is_psx else avg_buy * pkr_rate
-        current_val = price_pkr * qty
-        cost_basis = avg_buy_pkr * qty
-        enriched.append({**h, "current_price_pkr": round(price_pkr, 2),
+
+        if is_psx:
+            price_pkr = price_raw
+            avg_buy_pkr = avg_buy
+            current_val = price_pkr * qty
+            cost_basis = avg_buy_pkr * qty
+            stock_gain = price_pkr - avg_buy_pkr
+            fx_gain_pkr = 0
+        else:
+            current_price_usd = price_raw
+            price_pkr = current_price_usd * pkr_rate
+            avg_buy_pkr = avg_buy * buy_pkr_rate
+            current_val = price_pkr * qty
+            cost_basis = avg_buy_pkr * qty
+            stock_gain_usd = current_price_usd - avg_buy
+            fx_gain_pkr = avg_buy * (pkr_rate - buy_pkr_rate) * qty
+
+        gain_loss_pkr = current_val - cost_basis
+        gain_loss_pct = (gain_loss_pkr / cost_basis * 100) if cost_basis > 0 else 0
+
+        enriched.append({
+            **h,
+            "current_price_pkr": round(price_pkr, 2),
             "current_price_usd": round(price_raw, 4) if not is_psx else None,
-            "current_value_pkr": round(current_val, 2), "cost_basis_pkr": round(cost_basis, 2),
-            "gain_loss_pkr": round(current_val - cost_basis, 2),
-            "gain_loss_pct": round((price_pkr - avg_buy_pkr) / avg_buy_pkr * 100, 2) if avg_buy_pkr > 0 else 0.0})
+            "current_value_pkr": round(current_val, 2),
+            "cost_basis_pkr": round(cost_basis, 2),
+            "gain_loss_pkr": round(gain_loss_pkr, 2),
+            "gain_loss_pct": round(gain_loss_pct, 2),
+            "fx_gain_pkr": round(fx_gain_pkr, 2) if not is_psx else 0,
+            "current_pkr_rate": round(pkr_rate, 2),
+            "buy_pkr_rate": round(buy_pkr_rate, 2),
+        })
         total_current += current_val
         total_cost += cost_basis
 

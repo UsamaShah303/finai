@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS virtual_holdings (
     symbol          TEXT NOT NULL,
     quantity        NUMERIC DEFAULT 0,
     avg_buy_price   NUMERIC DEFAULT 0,
+    avg_buy_pkr_rate NUMERIC DEFAULT 278.0,
     weight          NUMERIC DEFAULT 0,
     esg_score       NUMERIC,
     market          TEXT DEFAULT 'INTL',    -- PSX or INTL
