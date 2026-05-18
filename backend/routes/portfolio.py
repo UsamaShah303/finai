@@ -1,12 +1,19 @@
 """
 Portfolio optimisation and holdings routes.
+Updated to use multi-asset optimiser (PSX, ETFs, Gold, Bonds, Mutual Funds).
 """
 
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from db import supabase
-from services.portfolio import optimise
-from services.market import get_price
+from services.portfolio import (
+    optimise_pakistan_portfolio,
+    calculate_portfolio_performance,
+    get_gold_pkr,
+    get_sbp_bond_rates,
+    get_mufap_nav,
+    ASSET_UNIVERSE,
+)
 
 portfolio_bp = Blueprint("portfolio", __name__)
 
@@ -15,12 +22,21 @@ portfolio_bp = Blueprint("portfolio", __name__)
 @jwt_required()
 def optimise_portfolio():
     """
-    Run MPT optimisation for the user.
-    Body: { "symbols": ["SPY","BND","GLD","VWO","VXUS","VNQ"], "risk_level": "Moderate" }
+    Run multi-asset portfolio optimisation.
+    Body: {
+        "total_pkr": 1000000,
+        "risk_level": "Moderate",          (optional — fetched from DB)
+        "include_gold": true,
+        "include_bonds": true,
+        "include_mutual": false,
+        "include_psx": true,
+        "include_intl": true
+    }
     """
     user_id = get_jwt_identity()
     data = request.get_json() or {}
-    symbols = data.get("symbols", ["SPY", "BND", "GLD", "VWO", "VXUS", "VNQ"])
+
+    total_pkr = float(data.get("total_pkr", 1000000))
     risk_level = data.get("risk_level")
 
     # If no risk_level provided, fetch from DB
@@ -28,10 +44,15 @@ def optimise_portfolio():
         profile = supabase.table("risk_profiles").select("risk_level").eq("user_id", user_id).execute()
         risk_level = profile.data[0]["risk_level"] if profile.data else "Moderate"
 
-    result = optimise(symbols=symbols, risk_level=risk_level)
-
-    if "error" in result:
-        return jsonify(result), 400
+    result = optimise_pakistan_portfolio(
+        risk_level=risk_level,
+        total_pkr=total_pkr,
+        include_gold=data.get("include_gold", True),
+        include_bonds=data.get("include_bonds", True),
+        include_mutual=data.get("include_mutual", False),
+        include_psx=data.get("include_psx", True),
+        include_intl=data.get("include_intl", True),
+    )
 
     return jsonify(result), 200
 
@@ -39,7 +60,7 @@ def optimise_portfolio():
 @portfolio_bp.route("/portfolio/holdings", methods=["GET"])
 @jwt_required()
 def get_holdings():
-    """Return user's current virtual holdings with live prices."""
+    """Return user's current virtual holdings with live P&L in PKR."""
     user_id = get_jwt_identity()
 
     result = supabase.table("virtual_holdings") \
@@ -49,16 +70,42 @@ def get_holdings():
 
     holdings = result.data or []
 
-    # Enrich with live prices
-    for h in holdings:
-        live_price = get_price(h["symbol"], h.get("market", "INTL"))
-        if live_price:
-            h["current_price"] = live_price
-            h["market_value"] = round(live_price * float(h.get("quantity", 0)), 2)
-            avg = float(h.get("avg_buy_price", 0))
-            if avg > 0:
-                h["gain_pct"] = round(((live_price - avg) / avg) * 100, 2)
-            else:
-                h["gain_pct"] = 0.0
+    if not holdings:
+        return jsonify({"holdings": [], "total_value_pkr": 0, "total_gain_pkr": 0}), 200
 
-    return jsonify({"holdings": holdings}), 200
+    perf = calculate_portfolio_performance(holdings)
+    return jsonify(perf), 200
+
+
+@portfolio_bp.route("/portfolio/gold", methods=["GET"])
+@jwt_required()
+def gold_price():
+    """Return live gold price in PKR per tola, gram, and troy oz."""
+    data = get_gold_pkr()
+    if not data:
+        return jsonify({"error": "Could not fetch gold price"}), 500
+    return jsonify(data), 200
+
+
+@portfolio_bp.route("/portfolio/bonds", methods=["GET"])
+@jwt_required()
+def bond_rates():
+    """Return current T-Bill and PIB rates."""
+    rates = get_sbp_bond_rates()
+    bonds = {}
+    for key, rate in rates.items():
+        info = ASSET_UNIVERSE["BONDS"].get(key, {})
+        bonds[key] = {**info, "current_rate_pa": rate}
+    return jsonify({"bonds": bonds}), 200
+
+
+@portfolio_bp.route("/portfolio/mutual-funds", methods=["GET"])
+@jwt_required()
+def mutual_fund_navs():
+    """Return latest MUFAP mutual fund NAVs."""
+    navs = get_mufap_nav()
+    funds = {}
+    for key, nav in navs.items():
+        info = ASSET_UNIVERSE["MUTUAL_FUNDS"].get(key, {})
+        funds[key] = {**info, "nav": nav}
+    return jsonify({"funds": funds}), 200
